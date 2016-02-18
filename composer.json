@@ -1,0 +1,17 @@
+{
+    "name": "aphexx/php-vpk-reader",
+    "description": "Library for reading VPK (Valve Pack File).",
+    "authors": [
+        {
+            "name": "Aphexx",
+            "email": "steamfor@gmail.com"
+        }
+    ],
+    "type": "library",
+    "require": {},
+    "autoload": {
+        "psr-0" : {
+            "VPKReader\\" : "src/"
+        }
+    }
+}
