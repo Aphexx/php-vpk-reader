@@ -21,6 +21,8 @@ class VPK{
     function __construct($vpk_path){
         $this->vpk_path = $vpk_path;
         $this->vpk_fd = fopen($vpk_path, 'rb');
+        if(!$this->vpk_fd)
+            throw new Exception("File '$vpk_path' open failed");
         $this->vpk_header = new VPKHeader($this->vpk_fd);
         $this->vpk_data_offset = 12 + (($this->vpk_header->version === 2) ? 16 : 0) + $this->vpk_header->tree_length;
         $this->vpk_entries = $this->read_archive($this->vpk_fd);
@@ -40,28 +42,31 @@ class VPK{
     }
 
     function read_file($path, $size, $offset=0){
+        $res = '';
         $f = $this->get_entry($path);
         if(!$f)
-            return NULL;
+            throw new Exception("Can't find valid entry at path: '$path'");
+        if($f->data_size == 0)
+            return $res;
         if($offset >= $f->size)
             throw new Exception('Offset exceeds file size');
-        $pos = $offset = $end = min($offset+$size, $f->size);
-        if($f->preload_size > 0 && $pos < $f->preload_size) {
-            $readsize = min($end-$pos, $f->preload_size);
-            fseek($this->vpk_fd, $f->PreloadOffset + $pos);
-            $res = fread($this->vpk_fd, $size);
+        if($f->preload_size > 0 && $offset < $f->preload_size) {
+            $readsize = min($size, $f->preload_size);
+            fseek($this->vpk_fd, $f->PreloadOffset + $offset);
+            $res = fread($this->vpk_fd, $readsize);
             if(!$res)
                 throw new Exception("$path: preload read failed $readsize");
-        }
-        if($end-$pos >= 0 && $f->data_size > 0) {
+        }else if($f->data_size > 0) {
             $fd = $this->archive_fds[$f->archive_index];
-            $buf = 0;
-            $readsize = min($end-$pos, $f->data_size);
-            fseek($fd, $f->data_offset+$pos-$offset);
-            $res = fread($fd, $f->data_size);
+            $readsize = min($size, $f->data_size);
+            fseek($fd, $f->data_offset+$offset);
+            $res = fread($fd, $readsize);
             if(!$res)
                 throw new Exception("IOE");
+        }else{
+            throw Exception("Not implemented: unknown error");
         }
+
         return $res;
     }
 
